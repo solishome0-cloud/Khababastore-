@@ -52,17 +52,28 @@
         </section>
 
         <!-- Instructions & Screenshot Submission Sidebar (Takes 1 column) -->
-        <aside class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 h-fit backdrop-blur-sm shadow-xl">
-            <h3 class="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
-                <span>📖</span> How to Buy
-            </h3>
-            <ol class="text-sm text-slate-300 space-y-3 list-decimal list-inside leading-relaxed mb-6">
-                <li>Connect your Web3 crypto wallet (MetaMask / TrustWallet).</li>
-                <li>Ensure you are on the <strong class="text-amber-300">BNB Smart Chain (BEP-20)</strong> network.</li>
-                <li>Click <strong class="text-emerald-400">"Buy Now"</strong> to launch your wallet automatically with the correct USDT amount and recipient address.</li>
-                <li>Approve the transaction in your wallet.</li>
-                <li>Take a screenshot of the completed transaction and email it to <a href="mailto:solishome0@gmail.com" class="text-indigo-400 underline hover:text-indigo-300 break-all">solishome0@gmail.com</a> for confirmation.</li>
-            </ol>
+        <aside class="bg-slate-800/60 border border-slate-700/80 rounded-2xl p-6 h-fit backdrop-blur-sm shadow-xl space-y-6">
+            <div>
+                <h3 class="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                    <span>👤</span> User Account Identity
+                </h3>
+                <div id="accountCard" class="bg-slate-900/90 border border-slate-700 p-3 rounded-xl text-xs text-slate-300">
+                    <p class="text-slate-400 mb-1">Status:</p>
+                    <p id="accountIdentityText" class="font-mono text-amber-300 break-all">Not Connected (Connect Wallet to establish decentralized account)</p>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-semibold text-amber-400 mb-3 flex items-center gap-2">
+                    <span>📖</span> How to Buy
+                </h3>
+                <ol class="text-sm text-slate-300 space-y-3 list-decimal list-inside leading-relaxed">
+                    <li>Connect your Web3 crypto wallet to activate your account.</li>
+                    <li>Ensure you are on the <strong class="text-amber-300">BNB Smart Chain (BEP-20)</strong> network.</li>
+                    <li>Click <strong class="text-emerald-400">"Buy Now"</strong> to trigger direct decentralized transfer.</li>
+                    <li>Take a screenshot of the transaction and email it to <a href="mailto:solishome0@gmail.com" class="text-indigo-400 underline hover:text-indigo-300 break-all">solishome0@gmail.com</a>.</li>
+                </ol>
+            </div>
 
             <div class="bg-slate-900/80 border border-slate-700 p-3 rounded-xl text-xs text-slate-400">
                 <p class="font-semibold text-slate-300 mb-1">Target Merchant Address:</p>
@@ -127,12 +138,12 @@
         const USDT_BEP20_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
         const ADMIN_PASS = "mardan332211";
 
-        // Load products from localStorage or use empty default array
         let products = JSON.parse(localStorage.getItem('khan_baba_products')) || [];
         let userAccount = null;
 
         window.addEventListener('DOMContentLoaded', () => {
             renderProducts();
+            checkExistingConnection();
         });
 
         function saveProductsToStorage() {
@@ -199,14 +210,24 @@
             });
         }
 
+        async function checkExistingConnection() {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        setAuthenticatedUser(accounts[0]);
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
+
         async function connectWallet() {
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    userAccount = accounts[0];
-                    const shortAddr = userAccount.substring(0, 6) + '...' + userAccount.substring(userAccount.length - 4);
-                    document.getElementById('walletStatus').innerText = shortAddr;
-                    document.getElementById('connectWalletBtn').className = "bg-emerald-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition shadow flex items-center gap-2";
+                    setAuthenticatedUser(accounts[0]);
                 } catch (error) {
                     alert("User denied wallet connection authorization.");
                 }
@@ -215,12 +236,27 @@
             }
         }
 
+        function setAuthenticatedUser(address) {
+            userAccount = address;
+            const shortAddr = address.substring(0, 6) + '...' + address.substring(address.length - 4);
+            
+            // Update Header button
+            document.getElementById('walletStatus').innerText = shortAddr;
+            document.getElementById('connectWalletBtn').className = "bg-emerald-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition shadow flex items-center gap-2";
+
+            // Update Sidebar Account Identity Card
+            document.getElementById('accountIdentityText').innerHTML = `Connected Account:<br><span class="text-emerald-400 font-mono font-bold">${address}</span>`;
+        }
+
         async function buyItem(itemName, itemPrice) {
+            if (!userAccount) {
+                alert("Please connect your decentralized wallet first to establish your account identity.");
+                await connectWallet();
+                if (!userAccount) return;
+            }
+
             if (typeof window.ethereum !== 'undefined') {
                 try {
-                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    const sender = accounts[0];
-
                     const decimals = 18;
                     const calculatedAmount = BigInt(Math.floor(itemPrice * Math.pow(10, decimals)));
                     
@@ -230,7 +266,7 @@
 
                     const transactionParameters = {
                         to: USDT_BEP20_CONTRACT,
-                        from: sender,
+                        from: userAccount,
                         data: dataPayload,
                     };
 
@@ -239,14 +275,14 @@
                         params: [transactionParameters],
                     });
 
-                    alert(`Transaction submitted successfully to your wallet!\n\nTxHash: ${txHash}\n\nPlease take a screenshot of this completed transaction and email it to solishome0@gmail.com`);
+                    alert(`Transaction submitted successfully from account (${userAccount} )!\n\nTxHash: ${txHash}\n\nPlease take a screenshot of this completed transaction and email it to solishome0@gmail.com`);
 
                 } catch (error) {
                     console.error(error);
                     alert("Transaction cancelled or failed in wallet. You can also send BEP-20 USDT directly to address: 0x29d3636A1d83129aC1b603E6e465B14A5A3f58ae");
                 }
             } else {
-                alert("Please connect or open this page inside a Web3 Decentralized Wallet browser (like MetaMask or Trust Wallet) to trigger automatic payment.");
+                alert("Please connect or open this page inside a Web3 Decentralized Wallet browser.");
             }
         }
 
