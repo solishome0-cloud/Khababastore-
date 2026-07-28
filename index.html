@@ -29,7 +29,7 @@
                     <span>🔌</span> <span id="walletStatus">Connect Wallet</span>
                 </button>
                 <button onclick="openAdminModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-2 rounded-xl text-sm transition border border-slate-600">
-                    ⚙️ Admin
+                    🔐 Login
                 </button>
             </div>
         </div>
@@ -104,8 +104,8 @@
                         <input type="number" id="newItemPrice" placeholder="e.g., 50" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
                     </div>
                     <div>
-                        <label class="text-xs text-slate-400 block mb-1">Picture URL</label>
-                        <input type="url" id="newItemImage" placeholder="https://example.com/image.jpg" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400">
+                        <label class="text-xs text-slate-400 block mb-1">Upload Picture from Device</label>
+                        <input type="file" id="newItemImageFile" accept="image/*" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-300 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400 focus:outline-none">
                     </div>
                     <button onclick="addNewProduct()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm transition shadow">Add Product to Store</button>
                 </div>
@@ -123,13 +123,10 @@
 
     <!-- Frontend Script Logic -->
     <script>
-        // Merchant Wallet Info & BEP-20 USDT Contract Details
         const MERCHANT_ADDRESS = "0x29d3636A1d83129aC1b603E6e465B14A5A3f58ae";
-        // Official Binance Smart Chain BEP-20 USDT Contract Address
         const USDT_BEP20_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
         const ADMIN_PASS = "mardan332211";
 
-        // Initial default products list
         let products = [
             {
                 id: 1,
@@ -153,7 +150,6 @@
 
         let userAccount = null;
 
-        // Render products on load
         window.addEventListener('DOMContentLoaded', () => {
             renderProducts();
         });
@@ -190,7 +186,6 @@
             });
         }
 
-        // Render products inside Admin Control Panel for deletion
         function renderAdminProductList() {
             const list = document.getElementById('adminProductList');
             list.innerHTML = '';
@@ -219,7 +214,6 @@
             });
         }
 
-        // Web3 Wallet Connection Handler
         async function connectWallet() {
             if (typeof window.ethereum !== 'undefined') {
                 try {
@@ -236,23 +230,19 @@
             }
         }
 
-        // Buy Action & Direct BEP-20 USDT Wallet Transaction Trigger
         async function buyItem(itemName, itemPrice) {
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                     const sender = accounts[0];
 
-                    // BEP-20 USDT uses 18 decimals on Binance Smart Chain
                     const decimals = 18;
                     const calculatedAmount = BigInt(Math.floor(itemPrice * Math.pow(10, decimals)));
                     
-                    // Standard ERC-20 transfer function signature: transfer(address,uint256) -> function selector is 0xa9059cbb
                     const recipientPadded = MERCHANT_ADDRESS.toLowerCase().replace('0x', '').padStart(64, '0');
                     const amountPadded = calculatedAmount.toString(16).padStart(64, '0');
                     const dataPayload = "0xa9059cbb" + recipientPadded + amountPadded;
 
-                    // Trigger direct smart contract transfer request in user's crypto wallet app
                     const transactionParameters = {
                         to: USDT_BEP20_CONTRACT,
                         from: sender,
@@ -275,7 +265,6 @@
             }
         }
 
-        // Admin Modal Controls
         function openAdminModal() {
             document.getElementById('adminModal').classList.remove('hidden');
             document.getElementById('adminModal').classList.add('flex');
@@ -300,30 +289,34 @@
         function addNewProduct() {
             const name = document.getElementById('newItemName').value;
             const price = parseFloat(document.getElementById('newItemPrice').value);
-            const image = document.getElementById('newItemImage').value;
+            const imageFile = document.getElementById('newItemImageFile').files[0];
 
-            if (!name || isNaN(price) || !image) {
-                alert("Please fill out all product details correctly!");
+            if (!name || isNaN(price) || !imageFile) {
+                alert("Please fill out all product details and select an image from your device!");
                 return;
             }
 
-            const newProd = {
-                id: Date.now(),
-                name: name,
-                price: price,
-                image: image
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const newProd = {
+                    id: Date.now(),
+                    name: name,
+                    price: price,
+                    image: e.target.result
+                };
+
+                products.push(newProd);
+                renderProducts();
+                renderAdminProductList();
+
+                // Clear inputs
+                document.getElementById('newItemName').value = '';
+                document.getElementById('newItemPrice').value = '';
+                document.getElementById('newItemImageFile').value = '';
+
+                alert("Product added successfully to store catalog!");
             };
-
-            products.push(newProd);
-            renderProducts();
-            renderAdminProductList();
-
-            // Clear inputs
-            document.getElementById('newItemName').value = '';
-            document.getElementById('newItemPrice').value = '';
-            document.getElementById('newItemImage').value = '';
-
-            alert("Product added successfully to store catalog!");
+            reader.readAsDataURL(imageFile);
         }
 
         function deleteProduct(id) {
