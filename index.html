@@ -59,9 +59,9 @@
             <ol class="text-sm text-slate-300 space-y-3 list-decimal list-inside leading-relaxed mb-6">
                 <li>Connect your Web3 crypto wallet (MetaMask / TrustWallet).</li>
                 <li>Ensure you are on the <strong class="text-amber-300">BNB Smart Chain (BEP-20)</strong> network.</li>
-                <li>Click <strong class="text-emerald-400">"Buy Now"</strong> on any item to trigger a direct payment request.</li>
-                <li>Take a screenshot of your successful transaction/receipt.</li>
-                <li>Email the screenshot to <a href="mailto:solishome0@gmail.com" class="text-indigo-400 underline hover:text-indigo-300 break-all">solishome0@gmail.com</a> for manual confirmation and order fulfillment.</li>
+                <li>Click <strong class="text-emerald-400">"Buy Now"</strong> to launch your wallet automatically with the correct USDT amount and recipient address.</li>
+                <li>Approve the transaction in your wallet.</li>
+                <li>Take a screenshot of the completed transaction and email it to <a href="mailto:solishome0@gmail.com" class="text-indigo-400 underline hover:text-indigo-300 break-all">solishome0@gmail.com</a> for confirmation.</li>
             </ol>
 
             <div class="bg-slate-900/80 border border-slate-700 p-3 rounded-xl text-xs text-slate-400">
@@ -74,7 +74,7 @@
 
     <!-- Admin Panel Modal -->
     <div id="adminModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
-        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <button onclick="closeAdminModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">✕</button>
             
             <h3 class="text-xl font-bold text-slate-100 mb-4">Admin Dashboard</h3>
@@ -87,12 +87,13 @@
             </div>
 
             <!-- Management View (Hidden by default) -->
-            <div id="adminDashboardView" class="hidden space-y-4">
+            <div id="adminDashboardView" class="hidden space-y-6">
                 <div class="bg-emerald-950/40 border border-emerald-800/50 p-3 rounded-xl text-xs text-emerald-400">
                     ✅ Admin Access Granted Successfully
                 </div>
                 
-                <div class="space-y-3">
+                <!-- Add New Product Form -->
+                <div class="space-y-3 bg-slate-900/50 p-4 rounded-xl border border-slate-700/60">
                     <h4 class="font-semibold text-sm text-slate-200">Add New Product</h4>
                     <div>
                         <label class="text-xs text-slate-400 block mb-1">Item Name</label>
@@ -108,14 +109,24 @@
                     </div>
                     <button onclick="addNewProduct()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm transition shadow">Add Product to Store</button>
                 </div>
+
+                <!-- Existing Products List with Delete Options -->
+                <div class="space-y-3">
+                    <h4 class="font-semibold text-sm text-slate-200">Manage Existing Products</h4>
+                    <div id="adminProductList" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Frontend Script Logic -->
     <script>
-        // Merchant Wallet Info
+        // Merchant Wallet Info & BEP-20 USDT Contract Details
         const MERCHANT_ADDRESS = "0x29d3636A1d83129aC1b603E6e465B14A5A3f58ae";
+        // Official Binance Smart Chain BEP-20 USDT Contract Address
+        const USDT_BEP20_CONTRACT = "0x55d398326f99059fF775485246999027B3197955";
         const ADMIN_PASS = "mardan332211";
 
         // Initial default products list
@@ -179,6 +190,35 @@
             });
         }
 
+        // Render products inside Admin Control Panel for deletion
+        function renderAdminProductList() {
+            const list = document.getElementById('adminProductList');
+            list.innerHTML = '';
+
+            if (products.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">No products to manage.</p>`;
+                return;
+            }
+
+            products.forEach(product => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-slate-900 border border-slate-700/80 p-3 rounded-xl";
+                row.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <img src="${product.image}" class="w-10 h-10 object-cover rounded-lg flex-shrink-0" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'">
+                        <div class="truncate">
+                            <p class="text-xs font-semibold text-slate-200 truncate">${product.name}</p>
+                            <p class="text-[11px] text-emerald-400">${product.price} USDT</p>
+                        </div>
+                    </div>
+                    <button onclick="deleteProduct(${product.id})" class="bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition border border-red-500/30 flex-shrink-0">
+                        🗑️ Delete
+                    </button>
+                `;
+                list.appendChild(row);
+            });
+        }
+
         // Web3 Wallet Connection Handler
         async function connectWallet() {
             if (typeof window.ethereum !== 'undefined') {
@@ -192,46 +232,46 @@
                     alert("User denied wallet connection authorization.");
                 }
             } else {
-                alert("No Web3 decentralized wallet detected! Please install MetaMask, Trust Wallet, or use a Web3 browser.");
+                alert("No Web3 decentralized wallet detected! Please use MetaMask, Trust Wallet, or a Web3 dApp browser.");
             }
         }
 
-        // Buy Action & Direct Wallet Transaction Trigger
+        // Buy Action & Direct BEP-20 USDT Wallet Transaction Trigger
         async function buyItem(itemName, itemPrice) {
-            alert(`You selected: ${itemName} for ${itemPrice} USDT.\n\nClick OK to prompt your decentralized wallet transfer permissions to the BEP-20 USDT address.`);
-
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                     const sender = accounts[0];
 
-                    // Convert price to standard hex format for USDT transfer or standard native transfer fallback
-                    // Note: BEP20 USDT contract interaction requires ERC-20 transfer ABI payload. 
-                    // For broad compatibility/direct permission, we trigger a native BNB transaction request or generic EVM call layout.
-                    const parsedValueHex = "0x" + (itemPrice * 1e18).toString(16); // Fallback representation style
+                    // BEP-20 USDT uses 18 decimals on Binance Smart Chain
+                    const decimals = 18;
+                    const calculatedAmount = BigInt(Math.floor(itemPrice * Math.pow(10, decimals)));
+                    
+                    // Standard ERC-20 transfer function signature: transfer(address,uint256) -> function selector is 0xa9059cbb
+                    const recipientPadded = MERCHANT_ADDRESS.toLowerCase().replace('0x', '').padStart(64, '0');
+                    const amountPadded = calculatedAmount.toString(16).padStart(64, '0');
+                    const dataPayload = "0xa9059cbb" + recipientPadded + amountPadded;
 
-                    // Request transaction permission from user wallet
+                    // Trigger direct smart contract transfer request in user's crypto wallet app
                     const transactionParameters = {
-                        to: MERCHANT_ADDRESS,
+                        to: USDT_BEP20_CONTRACT,
                         from: sender,
-                        value: '0x0', // 0 if sending token directly via contract, or user can send manual transfer. Let's send basic prompt.
+                        data: dataPayload,
                     };
 
-                    // Trigger window.ethereum send request
                     const txHash = await window.ethereum.request({
                         method: 'eth_sendTransaction',
                         params: [transactionParameters],
                     });
 
-                    alert(`Transaction submitted successfully!\nTxHash: ${txHash}\n\nPlease take a screenshot of this receipt and email it to solishome0@gmail.com`);
+                    alert(`Transaction submitted successfully to your wallet!\n\nTxHash: ${txHash}\n\nPlease take a screenshot of this completed transaction and email it to solishome0@gmail.com`);
 
                 } catch (error) {
                     console.error(error);
-                    alert("Transaction cancelled or failed. Alternatively, you can send funds directly via your wallet app to: 0x29d3636A1d83129aC1b603E6e465B14A5A3f58ae");
+                    alert("Transaction cancelled or failed in wallet. You can also send BEP-20 USDT directly to address: 0x29d3636A1d83129aC1b603E6e465B14A5A3f58ae");
                 }
             } else {
-                // Fallback for non-injected browsers: Copy or display instructions directly
-                window.location.href = `mailto:solishome0@gmail.com?subject=Payment Screenshot for ${itemName}&body=Hello Admin,%0D%0AI want to buy ${itemName} for ${itemPrice} USDT.%0D%0AHere is my payment proof screenshot attachment.`;
+                alert("Please connect or open this page inside a Web3 Decentralized Wallet browser (like MetaMask or Trust Wallet) to trigger automatic payment.");
             }
         }
 
@@ -251,6 +291,7 @@
             if (pass === ADMIN_PASS) {
                 document.getElementById('adminLoginView').classList.add('hidden');
                 document.getElementById('adminDashboardView').classList.remove('hidden');
+                renderAdminProductList();
             } else {
                 alert("Incorrect Admin Password!");
             }
@@ -275,6 +316,7 @@
 
             products.push(newProd);
             renderProducts();
+            renderAdminProductList();
 
             // Clear inputs
             document.getElementById('newItemName').value = '';
@@ -282,7 +324,14 @@
             document.getElementById('newItemImage').value = '';
 
             alert("Product added successfully to store catalog!");
-            closeAdminModal();
+        }
+
+        function deleteProduct(id) {
+            if (confirm("Are you sure you want to delete this product?")) {
+                products = products.filter(p => p.id !== id);
+                renderProducts();
+                renderAdminProductList();
+            }
         }
     </script>
 </body>
